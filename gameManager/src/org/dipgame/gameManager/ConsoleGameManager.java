@@ -1,5 +1,6 @@
 package org.dipgame.gameManager;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -141,7 +142,7 @@ public class ConsoleGameManager {
 	    	}
 	    }		
 		
-		//If the application is killed, it stopes all processes belonging to it.
+		//If the application is killed, it stops all processes belonging to it.
 		Runtime.getRuntime().addShutdownHook(new Thread(){
 			public void run() {
 			    destroyProcesses();
@@ -169,43 +170,37 @@ public class ConsoleGameManager {
 			processes.add(observer);
 	
 			isPlaying = true;
-			boolean isFinished = false;
 			boolean isNegoStarted = false;
 			InputStreamReader reader = new InputStreamReader(observer.getInputStream());
-			int n;
+			BufferedReader bufReader = new BufferedReader(reader);
 			String readText="";
-			char[] buffer;
-			do{
-				buffer = new char[512];
-				n = reader.read(buffer);
-				if(n>0){
-					readText = new String(buffer,0,n);
-					//An observer has connected. Have 0 players and 1 observer. Need 7 to start
-					if(!isNegoStarted && (readText.contains("An observer has connected.") || readText.contains("1 observer."))){
-						isNegoStarted = true;
 
-						//Run players
-						for (String[] player : players) {
-							if (!player[0].equals(Utils.LEAVE_EMPTY)) {
-								String programCall = processProgramCall(loadedPaths,
-										loadedPlayers.get(player[0]), player[1]);
-								processes.add(Runtime.getRuntime()
-										.exec(programCall));
-							}
-						}
-					}else{
-						if(!isNegoStarted && (readText.contains(" YES ( MAP (") || readText.contains(" 'standard' ) )"))){ 
-							isFinished = true;
+			while (observer.isAlive() && (readText = bufReader.readLine()) != null) {
+				// the server is still having trouble detecting if the negotiation server has stopped,
+				// so check for a message
+				if (readText.contains("Disconnected")) {
+					System.out.println("Stopping the server.");
+					break;
+				}
+				
+				//An observer has connected. Have 0 players and 1 observer. Need 7 to start
+				if(!isNegoStarted && (readText.contains("An observer has connected.") || readText.contains("1 observer."))){
+					isNegoStarted = true;
+
+					//Run players
+					for (String[] player : players) {
+						if (!player[0].equals(Utils.LEAVE_EMPTY)) {
+							String programCall = processProgramCall(loadedPaths,
+									loadedPlayers.get(player[0]), player[1]);
+							processes.add(Runtime.getRuntime()
+									.exec(programCall));
 						}
 					}
-					System.out.println(readText);
 				}
-				Thread.currentThread().sleep(100);
-			}while(isPlaying && (n==buffer.length || !isFinished)); //Reads until cancel button is pressed or incomplete buffer is read after finding a "Winner" string.
-			reader.close();
-			if(isFinished){
-				destroyProcesses();
+				System.out.println(readText);
 			}
+			
+			bufReader.close();
 		}catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -287,6 +282,8 @@ public class ConsoleGameManager {
 	}
 	
 	private void destroyProcesses() {
+		System.out.println("Cleaning up processes.");
+		
 		isPlaying = false;
 		for (Process process: processes) {
 			process.destroy();
