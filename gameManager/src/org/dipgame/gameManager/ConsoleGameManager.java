@@ -131,7 +131,15 @@ public class ConsoleGameManager {
 			return;
 		}
 		
-		
+		// make sure the log directory exists
+	    File logDir = new File("logs");
+	    if (!logDir.exists()) {
+	    	logDir.mkdir();
+	    } else {
+	    	if (logDir.isFile()) {
+	    		 System.out.println("'Logs' should be a directory.");
+	    	}
+	    }		
 		
 		//If the application is killed, it stopes all processes belonging to it.
 		Runtime.getRuntime().addShutdownHook(new Thread(){
@@ -156,7 +164,7 @@ public class ConsoleGameManager {
 				processes.add(Runtime.getRuntime().exec(cmd));	
 			}
 			
-			String call = processProgramCall(loadedPaths, "<JAVA_ENV> -jar programs/negoServer-2.0.3-full.jar <nego_port> <ip> <port> <game_id> STDOUT <time>", "negoServer");
+			String call = processProgramCall(loadedPaths, "<JAVA_ENV> -jar programs/negoServer-2.1-full.jar <nego_port> <ip> <port> STDOUT "+ time, "negoServer");
 			Process observer = Runtime.getRuntime().exec(call);
 			processes.add(observer);
 	
@@ -175,6 +183,7 @@ public class ConsoleGameManager {
 					//An observer has connected. Have 0 players and 1 observer. Need 7 to start
 					if(!isNegoStarted && (readText.contains("An observer has connected.") || readText.contains("1 observer."))){
 						isNegoStarted = true;
+
 						//Run players
 						for (String[] player : players) {
 							if (!player[0].equals(Utils.LEAVE_EMPTY)) {
